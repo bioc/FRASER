@@ -35,6 +35,12 @@
 #' @param aggregate,aggregated If TRUE, the pvalues are aggregated by gene, 
 #'             otherwise junction level pvalues are used (default).
 #' @param result The result table to be used by the method.
+#' @param label Indicates the genes or samples that will be labelled in the 
+#'             plot (only for \code{basePlot=TRUE}). Setting 
+#'             \code{label="aberrant"} will label all aberrant genes or 
+#'             samples. Labelling can be turned off by setting 
+#'             \code{label=NULL}. The user can also provide a custom 
+#'             list of gene symbols or sampleIDs.
 #' @param BPPARAM BiocParallel parameter to use.
 #' @param Ncpus Number of cores to use.
 #' @param plotType The type of plot that should be shown for plotEncDimSearch. 
@@ -145,7 +151,7 @@
 #' # example dataset and be able to show the usage of the plot functions
 #' res <- results(fds, padjCutoff=1, zScoreCutoff=NA, deltaPsiCutoff=NA)
 #' res
-#' plotExpression(fds, result=res[1])
+#' plotExpression(fds, result=res[2], type="psi5")
 #' plotQQ(fds, result=res[1])
 #' plotExpectedVsObservedPsi(fds, type="psi5", idx=5)
 #' 
@@ -164,7 +170,7 @@ NULL
 #' @export
 plotVolcano <- function(fds, sampleID, type=c("psi3", "psi5", "psiSite"), 
                     basePlot=TRUE, aggregate=FALSE,
-                    main=NULL,
+                    main=NULL, label=NULL,
                     deltaPsiCutoff=0.3, padjCutoff=0.1, ...){
     
     type <- match.arg(type)
@@ -173,7 +179,8 @@ plotVolcano <- function(fds, sampleID, type=c("psi3", "psi5", "psiSite"),
             aggregate=aggregate, deltaPsiCutoff=deltaPsiCutoff, 
             padjCutoff=padjCutoff, ...)
     
-    g <- ggplot(dt, aes(x=deltaPsi, y=-log10(pval), color=aberrant, text=paste0(
+    g <- ggplot(dt, aes(x=deltaPsi, y=-log10(pval), color=aberrant, 
+                        label=featureID, text=paste0(
             "SampleID: ", sampleID, "<br>",
             "featureID: ", featureID, "<br>",
             "Raw count (K): ", k, "<br>",
@@ -207,6 +214,7 @@ plotVolcano <- function(fds, sampleID, type=c("psi3", "psi5", "psiSite"),
             geom_hline(yintercept=padj_line, color="firebrick", linetype=4)
     }
     
+    
     if(isFALSE(basePlot)){
         g <- g + xlab(paste("delta", 
                             ggplotLabelPsi(type, asCharacter=TRUE)[[1]])) +
@@ -216,6 +224,27 @@ plotVolcano <- function(fds, sampleID, type=c("psi3", "psi5", "psiSite"),
                             ggplotLabelPsi(type, asCharacter=TRUE)[[1]])
         }
     } else{
+        if(!is.null(label)){
+            if(isScalarCharacter(label) && label == "aberrant"){
+                if(nrow(dt[aberrant == TRUE,]) > 0){
+                    g <- g + geom_text_repel(data=dt[aberrant == TRUE,],
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+                }
+            }
+            else{
+                if(nrow(dt[featureID %in% label]) > 0){
+                    g <- g + geom_text_repel(data=
+                                        subset(dt, featureID %in% label),
+                                    fontface='bold', hjust=-.2, vjust=-.2)
+                }
+                if(any(!(label %in% dt[,featureID]))){
+                    warning("Did not find gene(s) ", 
+                            paste(label[!(label %in% dt[,featureID])], 
+                                collapse=", "), " to label.")
+                }
+            }
+        }
+        
         if(is.null(main)){
             main <- as.expression(bquote(paste(
                 bold("Volcano plot: "), .(sampleID), ", ",
@@ -288,7 +317,7 @@ plotAberrantPerSample <- function(fds, main, type=c("psi3", "psi5", "psiSite"),
 #' @export
 plotExpression <- function(fds, type=c("psi5", "psi3", "psiSite"),
                             site=NULL, result=NULL, colGroup=NULL, 
-                            basePlot=TRUE, main=NULL, ...){
+                            basePlot=TRUE, main=NULL, label="aberrant", ...){
     if(!is.null(result)){
         type <- as.character(result$type)
         site <- getIndexFromResultTable(fds, result)
@@ -318,7 +347,8 @@ plotExpression <- function(fds, type=c("psi5", "psi3", "psiSite"),
         }
     }
 
-    g <- ggplot(dt, aes(x=n + 2, y=k + 1, color=aberrant, text=paste0(
+    g <- ggplot(dt, aes(x=n + 2, y=k + 1, color=aberrant, label=sampleID, 
+                        text=paste0(
             "Sample: ", sampleID, "<br>",
             "Counts (K): ", k, "<br>",
             "Total counts (N): ", n, "<br>",
@@ -333,7 +363,30 @@ plotExpression <- function(fds, type=c("psi5", "psi3", "psiSite"),
         theme(legend.position="none", title=) +
         xlab("Total junction coverage + 2 (N)") +
         ylab("Junction count + 1 (K)") +
-        ggtitle(main)
+        ggtitle(main) +
+        annotation_logticks(sides='bl')
+    
+    if(isTRUE(basePlot) && !is.null(label)){
+        if(isScalarCharacter(label) && label == "aberrant"){
+            if(nrow(dt[aberrant == TRUE,]) > 0){
+                g <- g + geom_text_repel(data=dt[aberrant == TRUE,], 
+                                        aes(col=aberrant),
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+            }
+        }
+        else{
+            if(nrow(dt[sampleID %in% label]) > 0){
+                g <- g + geom_text_repel(data=subset(dt, sampleID %in% label), 
+                                        aes(col=aberrant),
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+            }
+            if(any(!(label %in% dt[,sampleID]))){
+                warning("Did not find sample(s) ", 
+                        paste(label[!(label %in% dt[,sampleID])], 
+                            collapse=", "), " to label.")
+            }
+        }
+    }
 
     if(is.null(colGroup)){
         g <- g + scale_colour_manual(
@@ -354,7 +407,7 @@ plotExpression <- function(fds, type=c("psi5", "psi3", "psiSite"),
 #' @export
 plotExpectedVsObservedPsi <- function(fds, type=c("psi5", "psi3", "psiSite"),
                     idx=NULL, result=NULL, colGroup=NULL, main=NULL,
-                    basePlot=TRUE, ...){
+                    basePlot=TRUE, label="aberrant", ...){
     type <- match.arg(type)
     
     # get plotting data
@@ -393,7 +446,15 @@ plotExpectedVsObservedPsi <- function(fds, type=c("psi5", "psi3", "psiSite"),
         xlab <- paste("Predicted", ggplotLabelPsi(type, asCharacter=TRUE)[[1]])
     }
     
-    g <- ggplot(dt, aes(y=obsPsi, x=predPsi)) +
+    g <- ggplot(dt, aes(y=obsPsi, x=predPsi, label=sampleID, color=aberrant, 
+            text=paste0(
+            "Sample: ", sampleID, "<br>",
+            "Counts (K): ", k, "<br>",
+            "Total counts (N): ", n, "<br>",
+            "p value: ", signif(pval, 5), "<br>",
+            "padjust: ", signif(padj, 5), "<br>",
+            "Observed Psi: ", round(obsPsi, 2), "<br>",
+            "Predicted mu: ", round(predPsi, 2), "<br>"))) +
         geom_point(alpha=ifelse(dt$aberrant, 1, 0.5),
                 color=c("gray70", "firebrick")[dt$aberrant + 1]) +
         geom_abline(intercept = 0, slope=1) +
@@ -402,8 +463,34 @@ plotExpectedVsObservedPsi <- function(fds, type=c("psi5", "psi3", "psiSite"),
         xlab(xlab) +
         ylab(ylab) +
         ggtitle(main)
-        
+    
+    if(isTRUE(basePlot) && !is.null(label)){
+        if(isScalarCharacter(label) && label == "aberrant"){
+            if(nrow(dt[aberrant == TRUE,]) > 0){
+                g <- g + geom_text_repel(data=dt[aberrant == TRUE,], 
+                                        aes(col=aberrant),
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+            }
+        }
+        else{
+            if(nrow(dt[sampleID %in% label]) > 0){
+                g <- g + geom_text_repel(data=subset(dt, sampleID %in% label), 
+                                    aes(col=aberrant),
+                                    fontface='bold', hjust=-.2, vjust=-.2)
+            }
+            if(any(!(label %in% dt[,sampleID]))){
+                warning("Did not find sample(s) ", 
+                        paste(label[!(label %in% dt[,sampleID])], 
+                                collapse=", "), " to label.")
+            }
+        }
+    }    
 
+    if(is.null(colGroup)){
+        g <- g + scale_colour_manual(
+            values=c("FALSE"="gray70", "TRUE"="firebrick"))
+    }
+    
     plotBasePlot(g, basePlot)
 }
 
@@ -417,7 +504,7 @@ plotExpectedVsObservedPsi <- function(fds, type=c("psi5", "psi3", "psiSite"),
 #' @export
 plotQQ <- function(fds, type=NULL, idx=NULL, result=NULL, aggregate=FALSE,
                     global=FALSE, main=NULL, conf.alpha=0.05,
-                    samplingPrecision=3, basePlot=TRUE,
+                    samplingPrecision=3, basePlot=TRUE, label="aberrant",
                     Ncpus=min(3, getDTthreads()), ...){
 
     # check parameters
@@ -441,8 +528,14 @@ plotQQ <- function(fds, type=NULL, idx=NULL, result=NULL, aggregate=FALSE,
             dt <- dt[!duplicated(dt, by=c("type", "spliceID", "sampleID"))]
         }
     } else {
-        dt <- getPlottingDT(fds, axis="row", type=type, idx=idx, result=result,
-                aggregate=aggregate, ...)
+        dots <- list(...)
+        if(!"pvalLevel" %in% names(dots)){
+            dots[["pvalLevel"]] <- "junction"
+        }
+        dots <- append(list(fds=fds, axis="row", type=type, idx=idx, 
+                            result=result, aggregate=aggregate), 
+                        dots)
+        dt <- do.call(getPlottingDT, args=dots)
     }
     if(is.null(main)){
         if(isTRUE(global)){
@@ -488,7 +581,8 @@ plotQQ <- function(fds, type=NULL, idx=NULL, result=NULL, aggregate=FALSE,
     }
 
     # create qq-plot
-    g <- ggplot(dt2p[plotPoint == TRUE,], aes(x=exp, y=obs, col=aberrant,
+    g <- ggplot(dt2p[plotPoint == TRUE,], aes(x=exp, y=obs, col=aberrant, 
+            label=sampleID,
             text=paste(
                 "<br>SampleID: ", sampleID, "<br>K: ", k, "<br>N: ", n))) +
         geom_point() +
@@ -536,6 +630,30 @@ plotQQ <- function(fds, type=NULL, idx=NULL, result=NULL, aggregate=FALSE,
                 aes(x=exp, ymin=lower, ymax=upper, text=NULL),
                 alpha=0.2, color="gray")
     }
+    
+    # add labels if requested
+    if(isFALSE(global) && isTRUE(basePlot) && !is.null(label)){
+        if(isScalarCharacter(label) && label == "aberrant"){
+            if(nrow(dt2p[aberrant == TRUE,]) > 0){
+                g <- g + geom_text_repel(data=dt2p[aberrant == TRUE,], 
+                                        aes(col=aberrant),
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+            }
+        }
+        else{
+            if(nrow(dt2p[sampleID %in% label]) > 0){
+                g <- g + geom_text_repel(data=subset(dt2p, sampleID %in% 
+                                                                        label), 
+                                        aes(col=aberrant),
+                                        fontface='bold', hjust=-.2, vjust=-.2)
+            }
+            if(any(!(label %in% dt2p[,sampleID]))){
+                warning("Did not find sample(s) ", 
+                        paste(label[!(label %in% dt2p[,sampleID])], 
+                                collapse=", "), " to label.")
+            }
+        }
+    }   
 
     # add abline in the end
     g <- g + geom_abline(intercept=0, slope=1, col="firebrick")
@@ -575,7 +693,7 @@ plotEncDimSearch <- function(fds, type=c("psi3", "psi5", "psiSite"),
             geom_smooth() +
             ggtitle("Q estimation") +
             xlab("Estimated q") +
-            ylab("Area under the ROC curve") +
+            ylab("Area under the PR curve") +
             theme_bw(base_size=16)
         g1
     }
@@ -885,7 +1003,9 @@ getColDataAsDFFactors <- function(fds, names){
 }
 
 #' @noRd
-qlogisWithCap <- function(x){
+qlogisWithCap <- function(x, digits=2){
+    x <- round(x, digits)
+    x <- pmin(pmax(x, 10^-digits), 1-10^-digits)
     ans <- qlogis(x)
     ans[is.infinite(ans)] <- NA
     rowm <- rowMaxs(ans, na.rm=TRUE)

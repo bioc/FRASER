@@ -20,6 +20,7 @@ plotVolcano(
   basePlot = TRUE,
   aggregate = FALSE,
   main = NULL,
+  label = NULL,
   deltaPsiCutoff = 0.3,
   padjCutoff = 0.1,
   ...
@@ -45,6 +46,7 @@ plotExpression(
   colGroup = NULL,
   basePlot = TRUE,
   main = NULL,
+  label = "aberrant",
   ...
 )
 
@@ -56,6 +58,7 @@ plotExpectedVsObservedPsi(
   colGroup = NULL,
   main = NULL,
   basePlot = TRUE,
+  label = "aberrant",
   ...
 )
 
@@ -70,6 +73,7 @@ plotQQ(
   conf.alpha = 0.05,
   samplingPrecision = 3,
   basePlot = TRUE,
+  label = "aberrant",
   Ncpus = min(3, getDTthreads()),
   ...
 )
@@ -132,6 +136,13 @@ use the plotly framework.}
 otherwise junction level pvalues are used (default).}
 
 \item{main}{Title for the plot, if missing a default title will be used.}
+
+\item{label}{Indicates the genes or samples that will be labelled in the 
+plot (only for \code{basePlot=TRUE}). Setting 
+\code{label="aberrant"} will label all aberrant genes or 
+samples. Labelling can be turned off by setting 
+\code{label=NULL}. The user can also provide a custom 
+list of gene symbols or sampleIDs.}
 
 \item{padjCutoff, zScoreCutoff, deltaPsiCutoff}{Significance, Z-score or delta
 psi cutoff to mark outliers}
@@ -304,7 +315,7 @@ plotVolcano(fds, "sample1", "psi5")
 # example dataset and be able to show the usage of the plot functions
 res <- results(fds, padjCutoff=1, zScoreCutoff=NA, deltaPsiCutoff=NA)
 res
-plotExpression(fds, result=res[1])
+plotExpression(fds, result=res[2], type="psi5")
 plotQQ(fds, result=res[1])
 plotExpectedVsObservedPsi(fds, type="psi5", idx=5)
 

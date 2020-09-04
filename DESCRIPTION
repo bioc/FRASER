@@ -1,16 +1,31 @@
 Package: FRASER
 Type: Package
 Title: Find RAre Splicing Events in RNA-Seq Data
-Version: 1.0.1
-Date: 2020-06-08
-Author: Christian Mertes <mertes@in.tum.de>, Ines Scheller <scheller@in.tum.de>,
-    Prof. Julien Gagneur <gagneur@in.tum.de>
-Maintainer: Christian Mertes <mertes@in.tum.de>
+Version: 1.0.2
+Date: 2020-08-27
+Authors@R: c(
+    person("Christian", "Mertes", role=c("aut", "cre"), 
+            email="mertes@in.tum.de"),
+    person("Ines", "Scheller",  role=c("aut"), email="scheller@in.tum.de"),
+    person("Vicente", "Yepez", role=c("ctb"), email="yepez@in.tum.de"),
+    person("Julien", "Gagneur", role=c("aut"), email="gagneur@in.tum.de"))
 Description: Detection of rare aberrant splicing events in transcriptome 
     profiles. The workflow aims to assist the diagnostics in the field of 
     rare diseases where RNA-seq is performed to identify aberrant 
     splicing defects.
+biocViews: 
+    RNASeq,
+    AlternativeSplicing,
+    Sequencing,
+    Software,
+    Genetics,
+    Coverage
 License: MIT + file LICENSE
+URL: https://github.com/gagneurlab/FRASER
+BugRepots: https://github.com/gagneurlab/FRASER/issues
+RoxygenNote: 7.1.1
+Encoding: UTF-8
+VignetteBuilder: knitr
 Depends:
     BiocParallel,
     data.table,
@@ -34,6 +49,7 @@ Imports:
     IRanges,
     grDevices,
     ggplot2,
+    ggrepel,
     HDF5Array,
     matrixStats,
     methods,
@@ -62,16 +78,6 @@ Suggests:
 LinkingTo:
     Rcpp,
     RcppArmadillo
-biocViews: 
-    RNASeq,
-    AlternativeSplicing,
-    Sequencing,
-    Software,
-    Genetics,
-    Coverage
-URL: https://github.com/gagneurlab/FRASER
-RoxygenNote: 7.1.0
-Encoding: UTF-8
 Collate:
     variables.R
     getNSetterFuns.R
@@ -83,7 +89,6 @@ Collate:
     annotationOfRanges.R
     beta-binomial-testing.R
     calculatePSIValue.R
-    calculateStats.R
     countRNAseqData.R
     example_functions.R
     filterExpression.R
@@ -101,4 +106,3 @@ Collate:
     fitCorrectionMethods.R
     plotMethods.R
     zzz.R
-VignetteBuilder: knitr

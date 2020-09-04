@@ -19,7 +19,7 @@ FRASER(
   ...
 )
 
-calculateZscore(fds, type = currentType(fds), implementation = "PCA")
+calculateZscore(fds, type = currentType(fds), logit = TRUE)
 
 calculatePvalues(
   fds,
@@ -73,6 +73,9 @@ not yet converged after these number of iterations, the fit stops anyway.}
 
 \item{type}{The type of PSI (psi5, psi3 or psiSite for theta/splicing 
 efficiency)}
+
+\item{logit}{Indicates if z scores are computed on the logit scale (default) 
+or in the natural (psi) scale.}
 
 \item{distributions}{The distribution based on which the p-values are 
 calculated. Possible are beta-binomial, binomial and normal.}
@@ -160,6 +163,13 @@ a beta-binomial distribution to the introns.
 }}
 
 \examples{
+   # On Windows SNOW is the default for the parallele backend, which can be 
+   # very slow for many but small tasks. Therefore, we will use 
+   # for the example the SerialParam() backend.
+   if(.Platform$OS.type != "unix") {
+       register(SerialParam())
+   }
+   
    # preprocessing
    fds <- createTestFraserDataSet()
   

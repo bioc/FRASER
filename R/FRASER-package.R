@@ -44,6 +44,7 @@
 #' @importFrom pheatmap pheatmap
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom cowplot theme_cowplot
+#' @importFrom ggrepel geom_text_repel
 #'
 #'
 ### Data handling
@@ -80,7 +81,7 @@
 #' @importFrom grDevices colorRampPalette
 #' @importFrom GenomeInfoDb keepStandardChromosomes seqlevels<- seqlevels
 #'          seqlengths seqlengths<- seqlevelsStyle<- seqlevelsStyle seqnames 
-#'          seqinfo standardChromosomes
+#'          seqinfo standardChromosomes dropSeqlevels
 #' @importFrom DelayedArray rowMaxs rowMeans path<- cbind plogis qlogis
 #' @importFrom DelayedMatrixStats colSds rowMedians rowSds colMeans2 rowMeans2
 #'          rowQuantiles
@@ -94,7 +95,7 @@
 #'          scale_y_log10 scale_color_gradientn labs theme_bw theme
 #'          scale_color_brewer scale_color_discrete scale_linetype_manual 
 #'          annotate geom_histogram scale_fill_manual xlim scale_colour_manual
-#'          element_blank
+#'          element_blank annotation_logticks
 #'
 #' @importFrom tibble as_tibble
 #'

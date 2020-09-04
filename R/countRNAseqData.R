@@ -105,6 +105,13 @@
 #' @rdname countRNA
 #' 
 #' @examples
+#'    # On Windows SNOW is the default for the parallele backend, which can be 
+#'    # very slow for many but small tasks. Therefore, we will use 
+#'    # for the example the SerialParam() backend.
+#'    if(.Platform$OS.type != "unix") {
+#'        register(SerialParam())
+#'    }
+#'    
 #'   fds <- countRNAData(createTestFraserSettings())
 #'
 NULL
@@ -403,6 +410,12 @@ extractChromosomes <- function(bamFile){
     as.character(as.data.table(idxstatsBam(bamFile))[mapped > 0, seqnames])
 }
 
+#'
+#' extracts the chromosome lengths within the given bamFile
+#' @noRd
+extractChromosomeLengths <- function(bamFile){
+    as.numeric(as.data.table(idxstatsBam(bamFile))[mapped > 0, seqlength])
+}
 
 #'
 #' returns the name of the cache file if caching is enabled
@@ -468,11 +481,38 @@ countSplitReads <- function(sampleID, fds, NcpuPerSample=1, genome=NULL,
         genome <- genome[sampleID]
     }
     
+    # remove chromosomes with different seqlength than in genome (if provided)
+    # and remove non annotation existing chromosomes from counting
+    if(!is.null(genome)){
+        if(is.character(genome)){
+            genome <- getBSgenome(genome)
+        }
+        seqlevelsStyle(genome) <- seqlevelsStyle(chromosomes)[1]
+        chrLengths <- extractChromosomeLengths(bamFile)
+        mismatchChrs <- which(seqlengths(genome)[chromosomes] != chrLengths)
+        if(length(mismatchChrs) > 0){
+            warning("Not counting chromosome(s) ",  
+                    paste(chromosomes[mismatchChrs], collapse=", "),
+                    " in sample ", sampleID, " as it has a different length",
+                    " in the bamFile of this sample than in the provided",
+                    " genome.")
+            chromosomes <- chromosomes[-mismatchChrs]
+        }
+        missingChrs <- which(!chromosomes %in% seqnames(genome))
+        if(length(missingChrs) > 0){
+            warning("Not counting chromosome(s) ",  
+                    paste(chromosomes[missingChrs], collapse=", "),
+                    " in sample ", sampleID, " as it is not specified in",
+                    " the provided genome.")
+            chromosomes <- chromosomes[-missingChrs]
+        }
+    }
+    
     # extract the counts per chromosome
     countsList <- bplapply(chromosomes, FUN=countSplitReadsPerChromosome,
             bamFile=bamFile, pairedEnd=pairedEnd, settings=fds, genome=genome,
             BPPARAM=getBPParam(NcpuPerSample, length(chromosomes)))
-    
+
     # sort and merge the results befor returning/saving
     countsGR <- sort(unlist(GRangesList(countsList)))
     saveRDS(countsGR, cacheFile)
@@ -530,6 +570,14 @@ countSplitReadsPerChromosome <- function(chromosome, bamFile, pairedEnd,
                     " are not the same! Will force annotation to use the one", 
                     " from the BAM file.")
             seqlevelsStyle(genome) <- seqlevelsStyle(galignment)[1]
+        }
+        # drop seqlevels of chromosomes with different length than in genome
+        chrLengths <- seqlengths(galignment)
+        mismatchChrs <- which(
+                seqlengths(genome)[names(chrLengths)] != chrLengths)
+        if(length(mismatchChrs) > 0){
+            chrsToDrop <- names(chrLengths)[mismatchChrs]
+            galignment <- dropSeqlevels(galignment, chrsToDrop)
         }
     }
     
@@ -784,9 +832,6 @@ countNonSplicedReads <- function(sampleID, splitCountRanges, fds,
     # unstranded case: for counting only non spliced reads we 
     # skip this information
     isPairedEnd <- pairedEnd(fds[,samples(fds) == sampleID])[[1]]
-    if(isFALSE(as.logical(strandSpecific(fds)))){
-        isPairedEnd <- FALSE
-    }
     doAutosort <- isPairedEnd
     
     # check cache if available
